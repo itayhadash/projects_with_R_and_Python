@@ -1,0 +1,144 @@
+---
+title: "Assessment 5 - Text Wrangling"
+author: "52414"
+date: "May 23rd, 2020"
+output: html_document
+---
+
+
+**Data**
+In this assessment we will load and analyze a dataset of Greta Thunberg's tweets. Make sure that the datafile 'greta.csv' is in the same directory of your Rmd file to properly load the data.  
+
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/4/47/Greta_Thunberg_urges_MEPs_to_show_climate_leadership_%2849618310531%29_%28cropped%29.jpg"  width="255" height="350">
+
+
+```{r, include=FALSE}
+library(stringr)
+library(tidyr)
+library(tidyverse)
+library(tidytext) 
+
+scrap_twitter <- 0
+if(scrap_twitter)  # scrap data directly from tweeter. You can turn that flag on, install the required libraries and try to read data from tweeter yourself
+{
+  library(rtweet)
+  raw_greta<- get_timeline("@GretaThunberg", n=10000)
+  greta <- data.frame(raw_greta %>% # pipe data frame 
+  select(status_id, created_at, is_retweet, lang, text))# select variables of interest
+  write.csv(greta,"C:/Users/איתי חדש/Desktop/itayhadash/R/עבודות/greta.csv", row.names = FALSE)
+} else  # read stored file 
+{
+  greta <- read.csv("C:/Users/איתי חדש/Desktop/itayhadash/R/עבודות/greta.csv")  # read tweets 
+  greta$text <- as.character(greta$text)
+  greta$created_at <- as.character(greta$created_at)
+}
+```
+
+**Some Useful Functions**
+
+* `str_detect()` detects the presence or absence of a pattern and returns a logical vector (similar to `grepl()`).  
+* `str_count()` counts the number of matches  
+* `str_locate()` locates the first position of a pattern and returns a numeric matrix with columns start and end. <br>
+`str_locate_all()` locates all matches, returning a list of numeric matrices.  
+* `str_extract()` extracts text corresponding to the first match, returning a character vector. <br> `str_extract_all()` extracts all matches and returns a list of character vectors.  
+* `str_match()` extracts capture groups formed by () from the first match.  
+* `str_replace()` replaces the first matched pattern and returns a character vector. `str_replace_all()` replaces all matches. Similar to `sub()` and `gsub()`.
+* `str_subset()` returns the elements of a character vector that match a regular expression (similar to `grep()` with value = TRUE)`.  
+* In most cases the pattern these functions accept can be either a string or a regex.  
+* You can access individual character using `str_sub()`. It takes three arguments: a character vector, a start position and an end position.
+
+**Useful Resources**
+
+Check out these `regex` cheat-sheets [1](https://rstudio.com/wp-content/uploads/2016/09/RegExCheatsheet.pdf)
+[2](https://evoldyn.gitlab.io/evomics-2018/ref-sheets/R_strings.pdf)
+that will help you come up with the right regex for the exercises below.  
+
+In addition, check out this online regex checker to test your `regex` [online](https://regexr.com/).  
+
+**Note:** *In R, it is usually required to put double escape characters. In some other regex languages a single escape character is enough. For example: to denote a digit use '\\\\d' and not  '\\d'*.
+
+
+**Questions**
+
+1. Regex Practice Questions:
+
+a. Use `str_detect` with the appropriate regex to find how many tweets start with proper english grammar: <br>
+The first word starts with a capital english letter appearning exactly once (no other capital letters immediately follow it).   
+```{r}
+proper_gramar <- as.data.frame(greta$text %>% str_detect("^[:upper:](?=[:lower:])"))
+proper_gramar <- proper_gramar %>% mutate(c = ifelse(proper_gramar==TRUE,1,0))
+print(sum(proper_gramar$c))
+```
+
+b. Using `str_detect`, count the number of tweets in which the word 'climate' appears, *including* appearances as 'Climate' (e.g. at the start of a sentence) :
+
+```{r}
+is_climate <- as.data.frame(greta$text %>% str_detect("(climate|Climate)"))
+is_climate <- is_climate %>% mutate(c = ifelse(is_climate==TRUE,1,0))
+print(sum(is_climate$c))
+```
+
+c. Using `str_extract`, print all the hashtags ('#') that start with 'Z' (for example: '#Zero') appearing in Greta's tweets. 
+
+```{r}
+hash_with_z <- greta$text %>% str_extract_all("#(Z|z)[:alpha:]+",simplify = T)
+fir <- hash_with_z[,1]
+fir2 <-hash_with_z[,2] 
+ro <- fir[which(fir!="")]
+ro2 <- fir2[which(fir2!="")]
+print(ro)
+print(ro2)
+
+```
+
+d. We're interested in tracking mentions of temperature at different years in Greta's tweets. Using `str_extract`, extract and print every tweet that contains as a word or part of word one of the following words: 'temperature, hot, cold, warm', followed (not neccessarily consecutively) by a year between $1800$ and $2099$: 
+
+```{r}
+gerta_temp <- greta$text %>% str_extract(".+(temperature|hot|cold|warm).+(18|19|20)\\d{2}.+")
+gerta_temp<-as.data.frame(gerta_temp)
+gerta_temp<-na.omit(gerta_temp)
+gerta_temp <- gerta_temp[-2,]
+print(gerta_temp)
+
+```
+
+2. Using `str_replace` and additional commands, convert all times from 24-hour format to AM/PM  times. For example: 
+'2020-05-22 20:00:14' should be '2020-05-22 8:00:14PM' and '2020-05-22 08:12:21' should be '2020-05-22 8:12:21AM'. Print the first $21$ times after replacement. Pay attention that: (i) leading zeros shouldn't appear after the format change (ii)  '12' should convert to '12 PM' and '00' should convert to '12 AM'. 
+
+
+```{r}
+
+greta$created_at <- greta$created_at %>%  str_replace(pattern = greta$created_at,replacement = format(strptime(greta$created_at,"%Y-%m-%d %H:%M:%S"),"%Y-%m-%d %I:%M:%S %p"))
+
+head(greta$created_at,21)
+```
+
+
+3. Make a word-cloud of Greta's tweets. Remove all common stop words (use the command `stop_words` from the *tidytext* package), and also all hashtages ('words' starting with '#') and twitter user names
+('words' starting with '@'). Display in a word-cloud the top-100 (most-common) remaining words. 
+ 
+```{r, warning=FALSE}
+library(wordcloud2)
+greta$text<-str_to_lower(greta$text)
+wordi <- stop_words
+word <- paste0(wordi$word,c(rep("\\b",length(wordi$word))))
+word <- paste0(c(rep("\\b",length(wordi$word))),word)
+greta$text <- greta$text %>% str_replace_all("<.+>","")
+greta$text <- greta$text %>% str_replace_all("#.+\\b","")
+greta$text <- greta$text %>% str_replace_all("@.+\\b","")
+greta$text <-  greta$text %>% str_replace_all("https.+\\b","")
+greta$text <- greta$text %>% str_replace_all(paste(word,collapse = "|"),"")
+greta$text <- greta$text %>% str_replace_all("(\\.|\\'|\\,|\\!|\\?|\\~|\\-|\\”|\\�|\\’|\\&amp)","")
+greta$text <- greta$text %>% str_replace_all("york","new-york")
+greta$text <- greta$text %>% str_replace_all("\\s+[[:digit:]]+\\s+","")
+greta$text <- greta$text %>% str_replace_all("[:punct:](?![:alpha:]+)","")
+t <- strsplit(greta$text,"\\s+")
+t<-table(unlist(t))
+t<-as.data.frame(t)
+t<-t[-1,]
+t <- t %>% arrange(desc(t$Freq))
+top_t <-t[c(1:100),]
+wordcloud2(top_t)
+```
+
