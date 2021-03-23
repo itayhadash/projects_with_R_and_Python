@@ -2,7 +2,7 @@ title: "52414: Home Exam"
 
 date: "June 2rth, 2020"
 
-output: html_document
+output: rmarkdown::github_document
 
 ---
 
