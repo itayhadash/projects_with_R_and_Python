@@ -1,0 +1,99 @@
+---
+title: "Assessment 3"
+author: "52414"
+date: "April 22nd, 2020"
+output: html_document
+---
+
+## Assessment 3:   
+
+1. Write a function that recieves as input two vectors of real numbers: a and x. The function should return a
+vector e of the same length as a, such that e(i) is the empirical cumulative distribtuion function of 
+the sample x, evaluated at the point a(i), that is $e(i) = \hat{F}_n(a(i))$ where $\hat{F}_n$ is the empirical CDF defined by $x$.<br>
+    **Solution:**
+```{r one}
+my_ecdf <- function(a, x){
+  e <- rep(0,length(a))
+  or_a <- a[order(a)]
+  or_x <- x[order(x)]
+  for (j in 1:length(a)) {
+    for (i in 1:length(x)) {
+      if (or_x[i]<= or_a[j]) {
+        e[j]<-e[j]+1 
+      }
+    }
+    e[j]<- e[j]/length(x)
+  }
+  return(e)
+}
+```
+
+2. Download from moodle and load the Israeli crime dataset. 
+Calculate the assaults-rate: assaults per 1000 people for each city in the Israeli crime dataset. 
+Make a figure showing the empirical CDF of the assults-rate in each of the four regions in Israel
+(one plot, 4 different curves of different colors, each representing a different region). 
+You can use the function from question 1 or other commands in R. <br>
+    **Solution:**
+```{r}
+
+rm(list=ls())
+library(tidyverse)
+crimes = read.csv("C:/Users/איתי חדש/Desktop/itayhadash/R/עבודות/israeli_crime_2011_region.csv",stringsAsFactors = FALSE)  
+names(crimes)[5] <- "population"
+cases_per1000 <- round((crimes$assaults/crimes$population)*1000,4)
+cases_per1000 <- as.data.frame(cases_per1000)
+crimes <-cbind(crimes,cases_per1000)
+names(crimes)[6]<- "assaults per 1000"
+a<- c(seq(1,10,0.5))
+rige <- crimes %>% group_by(region) %>% select(`assaults per 1000`)
+North <- rige[which(rige$region == "North"),]
+South <- rige[which(rige$region == "South"),]
+GushDan <- rige[which(rige$region == "GushDan"),]
+East <- rige[which(rige$region == "East"),]
+
+a <- c(seq(0,10,by=0.2))
+my_ecdf <- function(a, x){
+  e <- rep(0,length(a))
+  or_a <- a[order(a)]
+  or_x <- x[order(x)]
+  for (j in 1:length(a)) {
+    for (i in 1:length(x)) {
+      if (or_x[i]<= or_a[j]) {
+        e[j]<-e[j]+1 
+      }
+    }
+    e[j]<- e[j]/length(x)
+  }
+  return(e)
+}
+
+
+plot(a,my_ecdf(a,North$`assaults per 1000`),type = "S",col="blue",lwd =2,ylab = "F hat at point x=a")
+lines(a,my_ecdf(a,South$`assaults per 1000`),type ="S",col="red",lwd =2)
+lines(a,my_ecdf(a,GushDan$`assaults per 1000`),type = "S",col="green",lwd =2 )
+lines(a,my_ecdf(a,East$`assaults per 1000`),type = "S",col="orange",lwd =2)
+legend("topleft",c("North","South","Gushdan","East"),col = c("blue","red","green","orange"),pch = 15)
+```
+
+3. Make a figure with histogram plot for the assaults rate in the North region. Choose bin size approriate for the data. 
+
+Next, make another figure with a single smoothed density plot showing the 
+densities of the four regions of the same data as in qu. 2 (with four different colors).
+What can you conclude about the differences between the regions? <br>
+    **Solution:**
+```{r}
+library("ggplot2")
+nor <- crimes %>% filter(region=="North")
+nor[c(1,6)] %>% ggplot(mapping = aes(town,`assaults per 1000`))  + geom_histogram(stat = "identity",fill ="red",color ="black",) + theme(axis.text = element_text(size = 7)) + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + labs(title = "Historgarm of assaults in the North",x ="city", y="assaults per 1000 pepole")
+
+plot(density(North$`assaults per 1000`),ylim=c(0,0.5),xlim = c(0,12),col ="blue",lwd = 2,main = "density of assults",xlab = "assult rate")
+lines(density(South$`assaults per 1000`),col="red", lwd = 2)
+lines(density(GushDan$`assaults per 1000`),col ="green", lwd = 2)
+lines(density(East$`assaults per 1000`), col= "orange", lwd = 2)
+legend("topleft",c("North","South","Gushdan","East"),col = c("blue","red","green","orange"),pch = 15)
+
+
+
+
+```
+
